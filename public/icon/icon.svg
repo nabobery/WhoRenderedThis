@@ -1,0 +1,50 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00D4FF"/>
+      <stop offset="100%" stop-color="#9B30FF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded border -->
+  <rect
+    x="28" y="28"
+    width="456" height="456"
+    rx="80" ry="80"
+    stroke="url(#g)"
+    stroke-width="12"
+  />
+
+  <!-- Outer reticle circle -->
+  <circle cx="256" cy="256" r="175" stroke="url(#g)" stroke-width="10"/>
+
+  <!-- Inner reticle circle -->
+  <circle cx="256" cy="256" r="115" stroke="url(#g)" stroke-width="10"/>
+
+  <!-- CROSSHAIRS - intersecting through both circles with gaps -->
+  <!-- Top crosshair: from border to outer circle, gap, outer to inner, gap, extends slightly into inner -->
+  <rect x="251" y="48" width="10" height="68" fill="url(#g)"/>
+  <rect x="251" y="136" width="10" height="24" fill="url(#g)"/>
+
+  <!-- Bottom crosshair -->
+  <rect x="251" y="396" width="10" height="68" fill="url(#g)"/>
+  <rect x="251" y="352" width="10" height="24" fill="url(#g)"/>
+
+  <!-- Left crosshair -->
+  <rect x="48" y="251" width="68" height="10" fill="url(#g)"/>
+  <rect x="136" y="251" width="24" height="10" fill="url(#g)"/>
+
+  <!-- Right crosshair -->
+  <rect x="396" y="251" width="68" height="10" fill="url(#g)"/>
+  <rect x="352" y="251" width="24" height="10" fill="url(#g)"/>
+
+  <!-- React atom orbits -->
+  <g stroke="url(#g)" stroke-width="8" fill="none">
+    <ellipse cx="256" cy="256" rx="72" ry="28"/>
+    <ellipse cx="256" cy="256" rx="72" ry="28" transform="rotate(60 256 256)"/>
+    <ellipse cx="256" cy="256" rx="72" ry="28" transform="rotate(-60 256 256)"/>
+  </g>
+
+  <!-- Nucleus - stroked circle like in reference -->
+  <circle cx="256" cy="256" r="14" stroke="url(#g)" stroke-width="8"/>
+</svg>

@@ -1,0 +1,117 @@
+/* ── Overlay styles (rendered inside Shadow DOM, fully isolated) ─────────── */
+
+.wrt-highlight {
+  position: fixed;
+  pointer-events: none;
+  border: 2px solid #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 4px;
+  z-index: 2147483646;
+  transition: all 0.08s ease-out;
+}
+
+.wrt-panel {
+  position: fixed;
+  z-index: 2147483647;
+  pointer-events: auto;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e2e8f0;
+  background: #1e1b2e;
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 8px;
+  padding: 8px 12px;
+  max-width: 400px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(99, 102, 241, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wrt-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wrt-component-name {
+  font-weight: 600;
+  color: #a5b4fc;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.wrt-source {
+  color: #94a3b8;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.wrt-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.wrt-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.wrt-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.15s;
+}
+
+.wrt-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.wrt-btn-active {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #a5b4fc;
+}
+
+.wrt-no-react {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.wrt-pinned-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+  flex-shrink: 0;
+}
+
+/* When probing, disable pointer events so elementFromPoint hits the page. */
+:host([data-wrt-probing='1']) .wrt-panel,
+:host([data-wrt-probing='1']) .wrt-panel * {
+  pointer-events: none !important;
+}

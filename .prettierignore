@@ -1,0 +1,9 @@
+.output/
+.wxt/
+dist/
+node_modules/
+pnpm-lock.yaml
+public/
+*.svg
+*.png
+*.ico
