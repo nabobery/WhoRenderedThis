@@ -3,6 +3,7 @@
   "description": "Browser extension that maps React components to their visual positions in the rendered page.",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "wxt",
