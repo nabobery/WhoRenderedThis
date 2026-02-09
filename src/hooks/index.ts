@@ -1,0 +1,1 @@
+export { useHoverInspect } from "./useHoverInspect"

@@ -1,0 +1,335 @@
+/**
+ * WhoRenderedThis Inspector Styles
+ *
+ * Scoped CSS for the CSUI overlay and panel.
+ * Uses --wrt- prefix for custom properties to avoid collisions.
+ */
+
+:host {
+  /* Colors */
+  --wrt-primary: #0080ff;
+  --wrt-primary-light: #66b3ff;
+  --wrt-primary-bg: rgba(0, 128, 255, 0.08);
+  --wrt-bg: rgba(255, 255, 255, 0.98);
+  --wrt-bg-hover: rgba(0, 128, 255, 0.05);
+  --wrt-text: #1a1a1a;
+  --wrt-text-muted: #6b7280;
+  --wrt-border: #e5e7eb;
+  --wrt-border-light: #f3f4f6;
+
+  /* Z-index scale */
+  --wrt-z-overlay: 999999;
+  --wrt-z-label: 1000000;
+  --wrt-z-panel: 1000001;
+
+  /* Typography */
+  --wrt-font:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --wrt-font-size: 12px;
+  --wrt-line-height: 1.5;
+
+  /* Spacing */
+  --wrt-radius: 6px;
+  --wrt-radius-sm: 4px;
+
+  /* Animation */
+  --wrt-transition: 0.1s ease-out;
+}
+
+/* Detect dark mode on pages with dark backgrounds */
+@media (prefers-color-scheme: dark) {
+  :host {
+    --wrt-bg: rgba(30, 30, 30, 0.98);
+    --wrt-bg-hover: rgba(0, 128, 255, 0.1);
+    --wrt-text: #f3f4f6;
+    --wrt-text-muted: #9ca3af;
+    --wrt-border: #374151;
+    --wrt-border-light: #1f2937;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* ========================================
+   Highlight Box
+   ======================================== */
+
+.wrt-highlight {
+  position: fixed;
+  border: 2px solid var(--wrt-primary);
+  background: var(--wrt-primary-bg);
+  pointer-events: none;
+  z-index: var(--wrt-z-overlay);
+  transition: all var(--wrt-transition);
+  box-sizing: border-box;
+}
+
+/* Corner brackets for visual effect */
+.wrt-corner {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  z-index: var(--wrt-z-overlay);
+}
+
+.wrt-corner-tl {
+  border-left: 3px solid var(--wrt-primary);
+  border-top: 3px solid var(--wrt-primary);
+}
+
+.wrt-corner-tr {
+  border-right: 3px solid var(--wrt-primary);
+  border-top: 3px solid var(--wrt-primary);
+}
+
+.wrt-corner-bl {
+  border-left: 3px solid var(--wrt-primary);
+  border-bottom: 3px solid var(--wrt-primary);
+}
+
+.wrt-corner-br {
+  border-right: 3px solid var(--wrt-primary);
+  border-bottom: 3px solid var(--wrt-primary);
+}
+
+/* ========================================
+   Component Label
+   ======================================== */
+
+.wrt-label {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--wrt-primary);
+  color: white;
+  padding: 3px 8px;
+  border-radius: var(--wrt-radius-sm);
+  font-family: var(--wrt-font);
+  font-size: var(--wrt-font-size);
+  font-weight: 500;
+  pointer-events: none;
+  z-index: var(--wrt-z-label);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.wrt-label-icon {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.wrt-label-text {
+  font-weight: 600;
+}
+
+.wrt-pinned-badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   Inspector Panel
+   ======================================== */
+
+.wrt-panel {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 320px;
+  max-height: 420px;
+  background: var(--wrt-bg);
+  border: 1px solid var(--wrt-border);
+  border-radius: var(--wrt-radius);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  font-family: var(--wrt-font);
+  font-size: var(--wrt-font-size);
+  color: var(--wrt-text);
+  z-index: var(--wrt-z-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.wrt-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wrt-border);
+  background: var(--wrt-border-light);
+}
+
+.wrt-panel-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.wrt-unpin-btn {
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--wrt-border);
+  border-radius: var(--wrt-radius-sm);
+  color: var(--wrt-text-muted);
+  font-family: var(--wrt-font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--wrt-transition);
+}
+
+.wrt-unpin-btn:hover {
+  background: var(--wrt-bg-hover);
+  border-color: var(--wrt-primary);
+  color: var(--wrt-primary);
+}
+
+.wrt-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.wrt-panel-body.wrt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--wrt-text-muted);
+  min-height: 100px;
+}
+
+.wrt-empty p {
+  margin: 0 0 6px;
+}
+
+.wrt-hint {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.wrt-panel-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--wrt-border);
+  background: var(--wrt-border-light);
+  font-size: 11px;
+  color: var(--wrt-text-muted);
+}
+
+/* ========================================
+   Component Stack List
+   ======================================== */
+
+.wrt-stack-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.wrt-stack-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--wrt-border-light);
+  cursor: pointer;
+  transition: background var(--wrt-transition);
+}
+
+.wrt-stack-item:last-child {
+  border-bottom: none;
+}
+
+.wrt-stack-item:hover {
+  background: var(--wrt-bg-hover);
+}
+
+.wrt-stack-item.wrt-selected {
+  background: var(--wrt-primary-bg);
+  border-left: 3px solid var(--wrt-primary);
+  padding-left: 9px;
+}
+
+.wrt-stack-item.wrt-host {
+  opacity: 0.7;
+}
+
+.wrt-component-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wrt-component-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wrt-bracket {
+  color: var(--wrt-text-muted);
+  font-weight: 400;
+}
+
+.wrt-host-tag {
+  color: var(--wrt-text-muted);
+  font-weight: 400;
+}
+
+.wrt-source-location {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--wrt-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wrt-depth-info {
+  font-size: 11px;
+}
+
+/* ========================================
+   Copy Button
+   ======================================== */
+
+.wrt-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--wrt-radius-sm);
+  color: var(--wrt-text-muted);
+  cursor: pointer;
+  transition: all var(--wrt-transition);
+  flex-shrink: 0;
+}
+
+.wrt-copy-btn:hover {
+  background: var(--wrt-border-light);
+  color: var(--wrt-primary);
+}
+
+.wrt-copy-btn:active {
+  transform: scale(0.95);
+}
