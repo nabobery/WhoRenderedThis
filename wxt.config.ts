@@ -3,6 +3,14 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  hooks: {
+    'build:manifestGenerated': (_, manifest) => {
+      // Remove empty content_scripts array - Edge Add-ons store rejects it
+      if (Array.isArray(manifest.content_scripts) && manifest.content_scripts.length === 0) {
+        delete manifest.content_scripts;
+      }
+    },
+  },
   manifest: {
     name: 'WhoRenderedThis',
     description: 'Hover over any element on a React app to see which component rendered it.',

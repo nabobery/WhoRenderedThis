@@ -5,6 +5,25 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "author": "Avinash Changrani",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nabobery/WhoRenderedThis.git"
+  },
+  "homepage": "https://github.com/nabobery/WhoRenderedThis#readme",
+  "bugs": {
+    "url": "https://github.com/nabobery/WhoRenderedThis/issues"
+  },
+  "keywords": [
+    "browser-extension",
+    "react",
+    "react-devtools",
+    "component-inspector",
+    "debugging",
+    "wxt",
+    "chromium",
+    "edge"
+  ],
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
