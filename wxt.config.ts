@@ -7,11 +7,11 @@ export default defineConfig({
     name: 'WhoRenderedThis',
     description: 'Hover over any element on a React app to see which component rendered it.',
     icons: {
-      16: 'icon/16.svg',
-      32: 'icon/32.svg',
-      48: 'icon/48.svg',
-      96: 'icon/96.svg',
-      128: 'icon/128.svg',
+      16: 'icon/16.png',
+      32: 'icon/32.png',
+      48: 'icon/48.png',
+      96: 'icon/96.png',
+      128: 'icon/128.png',
     },
     // No popup — action click toggles the inspector
     action: {},
