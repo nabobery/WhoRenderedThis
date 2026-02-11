@@ -4,10 +4,22 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   hooks: {
-    'build:manifestGenerated': (_, manifest) => {
+    'build:manifestGenerated': (wxt, manifest) => {
       // Remove empty content_scripts array - Edge Add-ons store rejects it
       if (Array.isArray(manifest.content_scripts) && manifest.content_scripts.length === 0) {
         delete manifest.content_scripts;
+      }
+
+      // Add Firefox-specific settings (ID required, data collection since Nov 2025)
+      if (wxt.config.browser === 'firefox') {
+        manifest.browser_specific_settings = {
+          gecko: {
+            id: '{1aa232e0-a767-46e0-87bf-506513f52eff}',
+            data_collection_permissions: {
+              required: ['none'],
+            },
+          },
+        };
       }
     },
   },
