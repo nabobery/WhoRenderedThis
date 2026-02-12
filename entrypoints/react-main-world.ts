@@ -8,6 +8,12 @@
  */
 import { CHANNEL, isProbeRequest } from '@/lib/bridge';
 import type { ComponentInfo, ProbeResponse } from '@/lib/bridge';
+import {
+  detectReactEnvironment,
+  getSourceResolver,
+  extractParentChain,
+} from '@/lib/source-resolver';
+import type { FiberNode } from '@/lib/source-resolver';
 
 export default defineUnlistedScript(() => {
   // If this script is injected twice, avoid registering duplicate listeners.
@@ -20,28 +26,13 @@ export default defineUnlistedScript(() => {
   const OVERLAY_HOST_TAG = 'who-rendered-this';
   const PROBING_ATTR = 'data-wrt-probing';
 
-  interface DebugSource {
-    fileName?: unknown;
-    lineNumber?: unknown;
-    columnNumber?: unknown;
-  }
-
-  interface FiberNode {
-    type?: unknown;
-    return?: FiberNode | null;
-    child?: FiberNode | null;
-    sibling?: FiberNode | null;
-    stateNode?: unknown;
-    _debugSource?: DebugSource;
+  function getStringProp(obj: object, key: string): string | null {
+    const value = (obj as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : null;
   }
 
   function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
-  }
-
-  function getStringProp(obj: object, key: string): string | null {
-    const value = (obj as Record<string, unknown>)[key];
-    return typeof value === 'string' ? value : null;
   }
 
   function getComponentName(type: unknown): string {
@@ -124,21 +115,22 @@ export default defineUnlistedScript(() => {
 
   /**
    * Extract human-readable component info from a Fiber node.
+   * Uses version-aware strategy pattern to resolve source locations
+   * across React 16-18 (_debugSource) and React 19+ (_debugStack).
    */
   function extractComponentInfo(fiber: FiberNode): ComponentInfo {
     const name = getComponentName(fiber.type);
-
-    let source: ComponentInfo['source'] = null;
-    if (fiber._debugSource && isRecord(fiber._debugSource)) {
-      const s = fiber._debugSource;
-      source = {
-        fileName: typeof s.fileName === 'string' ? s.fileName : '',
-        lineNumber: typeof s.lineNumber === 'number' ? s.lineNumber : 0,
-        columnNumber: typeof s.columnNumber === 'number' ? s.columnNumber : 0,
-      };
-    }
-
-    return { name, source };
+    const env = detectReactEnvironment(fiber);
+    const resolver = getSourceResolver(fiber);
+    const source = resolver.resolve(fiber);
+    const parentChain = extractParentChain(fiber);
+    return {
+      name,
+      source,
+      parentChain,
+      reactVersionRange: env.versionRange,
+      buildType: env.buildType,
+    };
   }
 
   function withOverlayDisabled<T>(fn: () => T): T {

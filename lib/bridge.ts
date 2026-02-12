@@ -6,6 +6,11 @@
 // ── Unique channel key so we don't collide with other postMessage traffic ──
 export const CHANNEL = 'who-rendered-this';
 
+// ── React environment type aliases ──────────────────────────────────────────
+export type ReactBuildType = 'dev' | 'production' | 'unknown';
+// legacy = React 16-18 (_debugSource), modern = React 19+ (_debugStack)
+export type ReactVersionRange = 'legacy' | 'modern' | 'unknown';
+
 // ── Request: content script → main world ────────────────────────────────────
 export interface ProbeRequest {
   channel: typeof CHANNEL;
@@ -18,6 +23,9 @@ export interface ProbeRequest {
 export interface ComponentInfo {
   name: string;
   source: { fileName: string; lineNumber: number; columnNumber: number } | null;
+  parentChain: string[];
+  reactVersionRange: ReactVersionRange;
+  buildType: ReactBuildType;
 }
 
 export interface ProbeResponse {
@@ -39,19 +47,37 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function isComponentInfo(value: unknown): value is ComponentInfo {
   if (!isRecord(value)) return false;
   if (typeof value.name !== 'string') return false;
 
   const source = value.source;
-  if (source === null) return true;
-  if (!isRecord(source)) return false;
+  if (source !== null) {
+    if (!isRecord(source)) return false;
+    if (
+      typeof source.fileName !== 'string' ||
+      !isFiniteNumber(source.lineNumber) ||
+      !isFiniteNumber(source.columnNumber)
+    )
+      return false;
+  }
 
-  return (
-    typeof source.fileName === 'string' &&
-    isFiniteNumber(source.lineNumber) &&
-    isFiniteNumber(source.columnNumber)
-  );
+  // Validate new fields when present (backward-compatible)
+  if ('parentChain' in value && !isStringArray(value.parentChain)) return false;
+  if ('reactVersionRange' in value) {
+    const v = value.reactVersionRange;
+    if (v !== 'legacy' && v !== 'modern' && v !== 'unknown') return false;
+  }
+  if ('buildType' in value) {
+    const b = value.buildType;
+    if (b !== 'dev' && b !== 'production' && b !== 'unknown') return false;
+  }
+
+  return true;
 }
 
 function isRect(value: unknown): value is ProbeResponse['rect'] {

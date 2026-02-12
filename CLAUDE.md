@@ -53,14 +53,23 @@ Content Script (isolated world)
 
 ### Shared Code
 
-- **`lib/bridge.ts`** — Message types (`ProbeRequest`, `ProbeResponse`) and type guards for communication between content script and main-world script via `window.postMessage`.
+- **`lib/bridge.ts`** — Message types (`ProbeRequest`, `ProbeResponse`), type aliases (`ReactVersionRange`, `ReactBuildType`), and type guards for communication between content script and main-world script via `window.postMessage`.
 
-- **`components/Overlay.tsx`** — React component for the inspector UI. Shows component name, source location, highlight box, and pin/copy actions.
+- **`lib/source-resolver.ts`** — Version-aware source location extraction using strategy pattern:
+  - `detectReactEnvironment()` — Probes fiber properties to detect React 16-18 vs 19+
+  - `debugSourceResolver` — Reads `fiber._debugSource` (React 16-18)
+  - `componentStackResolver` — Parses `fiber._debugStack` Error object (React 19+)
+  - `parseFirstFrameFromStack()` — Chrome/Firefox stack trace parser
+  - `extractParentChain()` — Walks fiber `.return` chain for ancestor components
+
+- **`components/Overlay.tsx`** — React component for the inspector UI. Shows component name, source location, version badge, parent chain (when pinned), highlight box, and pin/copy actions.
 
 ### Key Implementation Details
 
 - **Fiber key discovery**: Scans element properties for keys starting with `__reactFiber$` or `__reactInternalInstance$`
 - **Component detection**: Walks fiber chain looking for non-string `type` (function/class components vs host elements like "div")
+- **Version-aware source resolution**: Uses strategy pattern — `_debugSource` for React 16-18, `_debugStack` parsing for React 19+ (same technique as React DevTools)
+- **Caching**: Module-level caching for environment/resolver; `WeakMap` for per-component-type source locations
 - **CSS isolation**: Uses WXT's `createShadowRootUi` so overlay styles don't leak into the page
 - **Performance**: Throttles hover probing via `requestAnimationFrame`
 - **Toggle behavior**: Second injection removes the overlay (no persistent state)

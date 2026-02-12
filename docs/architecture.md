@@ -14,9 +14,11 @@ When debugging or exploring React applications, developers often ask: _"Which co
 
 2. **React Fiber Internals**: React attaches internal `__reactFiber$` properties to DOM elements, but these are private APIs not accessible from extension content scripts.
 
-3. **CSS Collision**: Injected overlay UI must not be affected by the host page's styles, and vice versa.
+3. **React Version Fragmentation**: React 19 removed the `_debugSource` property from fibers ([PR #28265](https://github.com/facebook/react/pull/28265)), breaking source location extraction for modern React apps. The extension must support multiple extraction strategies across React versions.
 
-4. **Performance**: Continuous hover tracking must not degrade page responsiveness.
+4. **CSS Collision**: Injected overlay UI must not be affected by the host page's styles, and vice versa.
+
+5. **Performance**: Continuous hover tracking must not degrade page responsiveness.
 
 ---
 
@@ -34,6 +36,7 @@ graph TB
 
     subgraph "Page Context"
         MW[Main World Script]
+        SR[Source Resolver<br/>Strategy Pattern]
         RF[React Fiber Tree]
         DOM[DOM Elements]
     end
@@ -42,19 +45,21 @@ graph TB
     CS -->|injectScript| MW
     CS -->|mounts| UI
     UI <-->|postMessage| MW
-    MW -->|reads| RF
+    MW -->|delegates| SR
+    SR -->|reads| RF
     MW -->|queries| DOM
     RF -.->|attached to| DOM
 ```
 
 ### Layer Responsibilities
 
-| Layer          | File                    | World          | Purpose                                                    |
-| -------------- | ----------------------- | -------------- | ---------------------------------------------------------- |
-| Background     | `background.ts`         | Service Worker | Responds to extension icon clicks, injects content script  |
-| Content Script | `inspector.content.tsx` | Isolated       | Mounts overlay UI, bridges messages, manages lifecycle     |
-| Main World     | `react-main-world.ts`   | Page Context   | Performs React Fiber introspection, returns component data |
-| Overlay UI     | `Overlay.tsx`           | Shadow DOM     | Renders inspector panel and highlight box                  |
+| Layer           | File                    | World          | Purpose                                                       |
+| --------------- | ----------------------- | -------------- | ------------------------------------------------------------- |
+| Background      | `background.ts`         | Service Worker | Responds to extension icon clicks, injects content script     |
+| Content Script  | `inspector.content.tsx` | Isolated       | Mounts overlay UI, bridges messages, manages lifecycle        |
+| Main World      | `react-main-world.ts`   | Page Context   | Performs React Fiber introspection, returns component data    |
+| Source Resolver | `source-resolver.ts`    | Page Context   | Version-aware source location extraction via strategy pattern |
+| Overlay UI      | `Overlay.tsx`           | Shadow DOM     | Renders inspector panel, version badge, and highlight box     |
 
 ---
 
@@ -67,6 +72,7 @@ sequenceDiagram
     participant CS as Content Script
     participant UI as Overlay UI
     participant MW as Main World
+    participant SR as Source Resolver
     participant Page as React Page
 
     User->>BG: Click extension icon
@@ -80,8 +86,13 @@ sequenceDiagram
         MW->>Page: document.elementFromPoint(x, y)
         MW->>Page: Find __reactFiber$ on element
         MW->>Page: Walk fiber.return chain
+        MW->>SR: detectReactEnvironment(fiber)
+        SR-->>MW: {versionRange, buildType}
+        MW->>SR: getSourceResolver(fiber).resolve()
+        SR-->>MW: SourceLocation | null
+        MW->>MW: extractParentChain(fiber)
         MW->>UI: postMessage(ProbeResponse)
-        UI->>UI: Render highlight + panel
+        UI->>UI: Render highlight + panel + version badge
     end
 
     User->>UI: Click to pin
@@ -246,6 +257,27 @@ function findNearestComponentFiber(fiber: FiberNode): FiberNode | null {
 }
 ```
 
+#### Component Information Extraction
+
+The main world script delegates source resolution to the strategy-based resolver:
+
+```typescript
+function extractComponentInfo(fiber: FiberNode): ComponentInfo {
+  const name = getComponentName(fiber.type);
+  const env = detectReactEnvironment(fiber);
+  const resolver = getSourceResolver(fiber);
+  const source = resolver.resolve(fiber);
+  const parentChain = extractParentChain(fiber);
+  return {
+    name,
+    source,
+    parentChain,
+    reactVersionRange: env.versionRange,
+    buildType: env.buildType,
+  };
+}
+```
+
 #### Component Name Extraction
 
 React components can be named in various ways:
@@ -284,33 +316,164 @@ function getComponentName(type: unknown): string {
 - `React.forwardRef` wrapped components
 - `React.memo` wrapped components
 
-#### Debug Source Information
+---
 
-In development builds, React includes source file information:
+### 4. Source Resolver (`lib/source-resolver.ts`)
+
+The source resolver implements a **strategy pattern** to handle the breaking change in React 19, where `_debugSource` was removed from fibers. This module is extracted for testability—all pure functions can be directly unit-tested.
+
+```mermaid
+flowchart TD
+    A[extractComponentInfo] --> B[detectReactEnvironment]
+    B --> C{Check fiber properties}
+    C -->|_debugSource exists| D[Legacy: React 16-18]
+    C -->|_debugStack exists| E[Modern: React 19+]
+    C -->|Neither exists| F[Production Build]
+
+    D --> G[debugSourceResolver]
+    E --> H[componentStackResolver]
+    F --> I[Return null]
+
+    G --> J[Read fiber._debugSource]
+    H --> K{_debugStack useful?}
+    K -->|Yes| L[Parse Error.stack]
+    K -->|No| M[describeNativeComponentFrame]
+    M --> N[Call component function]
+    N --> O[Compare stack traces]
+    O --> P[Parse isolated frame]
+
+    L --> Q[SourceLocation]
+    P --> Q
+    J --> Q
+```
+
+#### React Environment Detection
+
+Uses the `in` operator to detect property key existence (not just value):
 
 ```typescript
-interface DebugSource {
-  fileName?: string;
-  lineNumber?: number;
-  columnNumber?: number;
-}
+export function detectReactEnvironment(fiber: FiberNode): ReactEnvironment {
+  if (cachedEnv) return cachedEnv;
 
-if (fiber._debugSource && isRecord(fiber._debugSource)) {
-  source = {
-    fileName: fiber._debugSource.fileName,
-    lineNumber: fiber._debugSource.lineNumber,
-    columnNumber: fiber._debugSource.columnNumber,
-  };
+  if ('_debugSource' in fiber) {
+    cachedEnv = { versionRange: 'legacy', buildType: 'dev' };
+  } else if ('_debugStack' in fiber) {
+    cachedEnv = { versionRange: 'modern', buildType: 'dev' };
+  } else {
+    cachedEnv = { versionRange: 'unknown', buildType: 'production' };
+  }
+
+  return cachedEnv;
 }
 ```
 
-> **Note:** `_debugSource` is only available in development builds. Production builds minify component names and strip debug info.
+| Fiber Property | React Version | Build Type  |
+| -------------- | ------------- | ----------- |
+| `_debugSource` | 16-18         | Development |
+| `_debugStack`  | 19+           | Development |
+| Neither        | Any           | Production  |
+
+#### Stack Trace Parser
+
+Parses both Chrome/V8 and Firefox/Safari stack trace formats:
+
+```typescript
+// Chrome/V8:  "    at ComponentName (http://localhost:3000/src/App.tsx:15:10)"
+const CHROME_FRAME_RE = /^ *at (?:(.+) \((?:(.+):(\d+):(\d+))\)|(.+):(\d+):(\d+))$/;
+
+// Firefox/Safari: "ComponentName@http://localhost:3000/src/App.tsx:15:10"
+const FIREFOX_FRAME_RE = /^([^@]*)@(.+):(\d+):(\d+)$/;
+
+export function parseFirstFrameFromStack(stack: string): SourceLocation | null {
+  const lines = stack.split('\n');
+  const isChrome = /^\s*at /m.test(stack);
+  // ... parse and return {fileName, lineNumber, columnNumber}
+}
+```
+
+#### DebugSourceResolver (React 16-18)
+
+Simple property access for legacy React versions:
+
+```typescript
+export const debugSourceResolver: SourceResolver = {
+  resolve(fiber: FiberNode): SourceLocation | null {
+    const ds = fiber._debugSource;
+    if (!ds || !isRecord(ds)) return null;
+    if (typeof ds.fileName !== 'string') return null;
+
+    return {
+      fileName: ds.fileName,
+      lineNumber: typeof ds.lineNumber === 'number' ? ds.lineNumber : 0,
+      columnNumber: typeof ds.columnNumber === 'number' ? ds.columnNumber : 0,
+    };
+  },
+};
+```
+
+#### ComponentStackResolver (React 19+)
+
+Two-phase approach matching React DevTools' `describeNativeComponentFrame` technique:
+
+**Phase 1 (Primary):** Parse `fiber._debugStack` — React 19 stores an Error object with a `.stack` property on fibers in dev mode.
+
+**Phase 2 (Fallback):** If `_debugStack` is not useful, call the component function to generate a stack trace:
+
+```typescript
+function describeNativeComponentFrame(fn: Function): SourceLocation | null {
+  // Generate a "control" stack (from this frame)
+  const control = new Error();
+  let sample: Error | null = null;
+
+  // Detect class vs function component
+  const proto = fn.prototype;
+  if (proto && typeof proto.isReactComponent === 'object') {
+    // Class component — use Reflect.construct
+    try {
+      Reflect.construct(fn, []);
+    } catch (e) {
+      sample = e instanceof Error ? e : null;
+    }
+  } else {
+    // Function component — call directly
+    try {
+      fn({});
+    } catch (e) {
+      sample = e instanceof Error ? e : null;
+    }
+  }
+
+  // Compare stacks to isolate the component frame
+  // ... (diff control vs sample stack traces)
+  return parseFirstFrameFromStack(componentFrame);
+}
+```
+
+#### Parent Chain Extraction
+
+Walks the fiber `.return` chain to collect ancestor component names:
+
+```typescript
+export function extractParentChain(fiber: FiberNode, maxDepth = 5): string[] {
+  const chain: string[] = [];
+  let current = fiber.return ?? null;
+
+  while (current && chain.length < maxDepth) {
+    if (current.type && typeof current.type !== 'string' && typeof current.type !== 'symbol') {
+      chain.push(getComponentName(current.type));
+    }
+    current = current.return ?? null;
+  }
+
+  return chain;
+}
+```
 
 ---
 
-### 4. Message Bridge (`lib/bridge.ts`)
+### 5. Message Bridge (`lib/bridge.ts`)
 
-Type-safe communication between content script and main world:
+Type-safe communication between content script and main world with enhanced component metadata:
 
 ```mermaid
 graph LR
@@ -326,15 +489,29 @@ graph LR
     MW -->|ProbeResponse| CS
 ```
 
-#### Message Types
+#### Type Definitions
 
 ```typescript
+// React environment type aliases
+export type ReactBuildType = 'dev' | 'production' | 'unknown';
+export type ReactVersionRange = 'legacy' | 'modern' | 'unknown';
+// legacy = React 16-18 (_debugSource), modern = React 19+ (_debugStack)
+
 // Request: "What component is at coordinates (x, y)?"
 interface ProbeRequest {
   channel: 'who-rendered-this';
   type: 'probe-request';
   x: number;
   y: number;
+}
+
+// Enhanced component information
+interface ComponentInfo {
+  name: string;
+  source: { fileName: string; lineNumber: number; columnNumber: number } | null;
+  parentChain: string[]; // Parent component names (nearest-first, max 5)
+  reactVersionRange: ReactVersionRange;
+  buildType: ReactBuildType;
 }
 
 // Response: Component info + bounding rect
@@ -346,29 +523,37 @@ interface ProbeResponse {
 }
 ```
 
-#### Type Guards
+#### Backward-Compatible Type Guards
 
-Runtime validation ensures message integrity:
+Runtime validation accepts both old and new message formats:
 
 ```typescript
-export function isProbeRequest(data: unknown): data is ProbeRequest {
-  if (!isRecord(data)) return false;
-  return (
-    data.channel === CHANNEL &&
-    data.type === 'probe-request' &&
-    isFiniteNumber(data.x) &&
-    isFiniteNumber(data.y)
-  );
+function isComponentInfo(value: unknown): value is ComponentInfo {
+  if (!isRecord(value)) return false;
+  if (typeof value.name !== 'string') return false;
+
+  // Validate source...
+
+  // Validate new fields when present (backward-compatible)
+  if ('parentChain' in value && !isStringArray(value.parentChain)) return false;
+  if ('reactVersionRange' in value) {
+    const v = value.reactVersionRange;
+    if (v !== 'legacy' && v !== 'modern' && v !== 'unknown') return false;
+  }
+  if ('buildType' in value) {
+    const b = value.buildType;
+    if (b !== 'dev' && b !== 'production' && b !== 'unknown') return false;
+  }
+
+  return true;
 }
 ```
 
-The unique channel identifier (`'who-rendered-this'`) prevents collision with other `postMessage` traffic on the page.
-
 ---
 
-### 5. Overlay UI (`components/Overlay.tsx`)
+### 6. Overlay UI (`components/Overlay.tsx`)
 
-The React overlay provides the visual interface:
+The React overlay provides the visual interface with version awareness:
 
 ```mermaid
 stateDiagram-v2
@@ -377,6 +562,47 @@ stateDiagram-v2
     Pinned --> Tracking: Click/Escape
     Tracking --> [*]: Escape/Close
     Pinned --> [*]: Close
+
+    state Pinned {
+        [*] --> ShowParentChain
+        ShowParentChain: Display ancestor components
+    }
+```
+
+#### Version Badge
+
+Displays the detected React version range and build type:
+
+```typescript
+const versionLabel = (() => {
+  const base =
+    versionRange === 'legacy' ? 'React 16-18' : versionRange === 'modern' ? 'React 19+' : 'React';
+  return buildType === 'production' ? `${base} (prod)` : base;
+})();
+
+// Rendered as: <span className="wrt-badge">{versionLabel}</span>
+```
+
+#### Parent Chain Display
+
+When pinned, shows the component's ancestor hierarchy:
+
+```typescript
+{pinned && parentChain.length > 0 && (
+  <div className="wrt-parent-chain">{parentChain.join(' > ')}</div>
+)}
+// Example: "App > Layout > Sidebar"
+```
+
+#### Enhanced Copy Functionality
+
+Includes source location in copied text:
+
+```typescript
+const text = component.source
+  ? `${component.name} (${component.source.fileName}:${component.source.lineNumber})`
+  : component.name;
+// Example: "Button (src/components/Button.tsx:42)"
 ```
 
 #### Performance Optimization
@@ -404,6 +630,7 @@ function onMove(e: MouseEvent) {
 - `requestAnimationFrame` batches updates to display refresh rate (~60fps)
 - Position deduplication prevents redundant probes
 - Panel position calculated to stay within viewport bounds
+- Dynamic panel height based on parent chain visibility
 
 #### Overlay Visibility During Probing
 
@@ -429,6 +656,24 @@ CSS makes the panel non-interactive during probing:
   pointer-events: none !important;
 }
 ```
+
+---
+
+## Caching Strategy
+
+The extension employs a multi-layer caching strategy to optimize performance:
+
+| Cache                      | Type                              | Key              | Lifetime   |
+| -------------------------- | --------------------------------- | ---------------- | ---------- |
+| React environment          | Module variable                   | Singleton        | Page load  |
+| Active source resolver     | Module variable                   | Singleton        | Page load  |
+| Component source locations | `WeakMap<object, SourceLocation>` | `fiber.type` ref | GC-managed |
+
+**Benefits:**
+
+- Same component hovered 100x = only 1 stack generation (React 19+)
+- React version detection happens once per page
+- WeakMap ensures cache entries are garbage-collected when components unmount
 
 ---
 
@@ -477,19 +722,23 @@ WhoRenderedThis/
 │   ├── inspector.content.tsx   # Runtime content script
 │   └── react-main-world.ts     # Main world fiber inspector
 ├── components/
-│   ├── Overlay.tsx             # React overlay UI
+│   ├── Overlay.tsx             # React overlay UI with version badge
 │   ├── Overlay.css             # Overlay styles (Shadow DOM)
 │   └── inspector-host.css      # Host element reset
 ├── lib/
-│   └── bridge.ts               # Message types and guards
+│   ├── bridge.ts               # Message types, guards, and type aliases
+│   └── source-resolver.ts      # Version-aware source extraction (strategy pattern)
 ├── tests/
 │   ├── background.test.ts      # Background service worker tests
 │   ├── bridge.test.ts          # Message bridge tests
 │   ├── inspector.content.test.ts
 │   ├── Overlay.test.tsx        # Overlay component tests
-│   └── react-main-world.test.ts
+│   ├── react-main-world.test.ts
+│   └── source-resolver.test.ts # Stack parser, version detection, resolver tests
 ├── public/
 │   └── icon/                   # Extension icons
+├── docs/
+│   └── architecture.md         # This document
 ├── wxt.config.ts               # WXT + manifest config
 ├── vitest.config.ts            # Vitest test configuration
 └── package.json
@@ -501,27 +750,41 @@ WhoRenderedThis/
 
 ### 1. Production Builds
 
-Minified production React builds often have:
+Minified production React builds have:
 
 - Shortened component names (`t`, `e`, `n` instead of `UserProfile`)
-- Stripped `_debugSource` information
+- Stripped `_debugSource` and `_debugStack` information
 - Tree-shaken `displayName` properties
 
-**Mitigation:** The extension shows whatever name is available, even if minified.
+**Mitigation:** The extension detects production builds and displays a "(prod)" badge. Component names are shown as available, even if minified. Source location will be `null`.
 
-### 2. iframes and Shadow DOM
+### 2. React 19+ Side Effects
+
+The `describeNativeComponentFrame` fallback technique calls component functions to generate stack traces. This may trigger side effects.
+
+**Mitigation:**
+
+- Results are cached in a `WeakMap` keyed on `fiber.type` — each component type is called at most once
+- Wrapped in try/catch to handle errors gracefully
+- Same approach used by React DevTools
+
+### 3. iframes and Shadow DOM
 
 The current implementation only inspects the top-level document.
 
 **Future enhancement:** Traverse into iframes by injecting the main world script into each frame.
 
-### 3. Non-React Applications
+### 4. Non-React Applications
 
 On pages without React, the extension gracefully shows "No React component found."
 
-### 4. React Internals Are Private
+### 5. React Internals Are Private
 
-The `__reactFiber$` property is an implementation detail, not a public API. While it has remained stable across React versions, future React versions could change it.
+The `__reactFiber$`, `_debugSource`, and `_debugStack` properties are implementation details, not public APIs. While they have remained relatively stable, future React versions could change them.
+
+### 6. Multiple React Versions on Same Page
+
+If a page contains multiple React versions (e.g., micro-frontends), the first fiber detected determines the environment. This is an acceptable edge case.
 
 ---
 
@@ -535,19 +798,22 @@ The `__reactFiber$` property is an implementation detail, not a public API. Whil
 
 4. **Message validation**: Type guards ensure only expected message shapes are processed.
 
+5. **Limited component invocation**: The React 19+ fallback only calls components in dev builds, cached per-type, with error handling.
+
 ---
 
 ## Technology Stack
 
-| Component     | Technology                                                |
-| ------------- | --------------------------------------------------------- |
-| Framework     | [WXT](https://wxt.dev) (Vite-powered extension framework) |
-| UI Library    | React 19                                                  |
-| Language      | TypeScript 5.x                                            |
-| CSS Isolation | Shadow DOM                                                |
-| Build         | Vite + WXT                                                |
-| Testing       | Vitest + Testing Library                                  |
-| Linting       | ESLint + Prettier                                         |
+| Component      | Technology                                                |
+| -------------- | --------------------------------------------------------- |
+| Framework      | [WXT](https://wxt.dev) (Vite-powered extension framework) |
+| UI Library     | React 19                                                  |
+| Language       | TypeScript 5.x                                            |
+| CSS Isolation  | Shadow DOM                                                |
+| Build          | Vite + WXT                                                |
+| Testing        | Vitest + Testing Library                                  |
+| Linting        | ESLint + Prettier                                         |
+| Design Pattern | Strategy Pattern (source resolution)                      |
 
 ---
 
@@ -557,3 +823,5 @@ The `__reactFiber$` property is an implementation detail, not a public API. Whil
 - [Chrome Extension Manifest V3](https://developer.chrome.com/docs/extensions/mv3/)
 - [React Fiber Architecture](https://github.com/acdlite/react-fiber-architecture)
 - [Shadow DOM](https://developer.mozilla.org/en-US/docs/Web/API/Web_components/Using_shadow_DOM)
+- [React 19 \_debugSource Removal](https://github.com/facebook/react/issues/29092) — Issue #29092
+- [React DevTools ComponentStackFrame](https://github.com/facebook/react/blob/main/packages/react-devtools-shared/src/backend/shared/DevToolsComponentStackFrame.js) — Reference implementation

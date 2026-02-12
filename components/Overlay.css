@@ -97,6 +97,12 @@
   color: #a5b4fc;
 }
 
+.wrt-parent-chain {
+  color: #64748b;
+  font-size: 10px;
+  word-break: break-all;
+}
+
 .wrt-no-react {
   color: #94a3b8;
   font-style: italic;

@@ -44,9 +44,12 @@ A browser extension that maps React components to their visual positions in the 
 ## Features
 
 - **Visual Component Inspector** — Hover over any UI element to see the React component that rendered it
-- **Component Name + Source** — Shows `displayName`/`name` and best-effort `_debugSource` in dev builds
+- **Component Name + Source** — Shows `displayName`/`name` and source file location in dev builds
+- **React 16-19 Support** — Version-aware source extraction: `_debugSource` for React 16-18, `_debugStack` parsing for React 19+
+- **Version Badge** — Displays detected React version range ("React 16-18", "React 19+") and build type
+- **Parent Component Chain** — When pinned, shows ancestor components (e.g., "App > Layout > Sidebar")
 - **Pin Selection** — Click to lock the current selection; click again or press Escape to unpin
-- **Copy to Clipboard** — One-click copy of the component name
+- **Copy to Clipboard** — Copy component name with source location (e.g., "Button (src/Button.tsx:42)")
 - **Zero Config** — Works on any page using React (dev or production builds)
 - **CSS Isolated** — Overlay UI is rendered inside a Shadow DOM so it never interferes with the page
 
@@ -56,7 +59,10 @@ A browser extension that maps React components to their visual positions in the 
 2. A **content script** is injected into the page (isolated world) that mounts a Shadow DOM overlay
 3. A **main-world script** is injected alongside it — this script can access React's internal `__reactFiber$` properties on DOM elements
 4. On hover, the content script asks the main-world script to resolve the element under the cursor to its nearest React component via Fiber tree traversal
-5. The overlay highlights the component's bounding box and displays its name
+5. **Version-aware source resolution** detects the React version and uses the appropriate strategy:
+   - React 16-18: reads `fiber._debugSource` directly
+   - React 19+: parses `fiber._debugStack` Error object (same technique as React DevTools)
+6. The overlay highlights the component's bounding box and displays its name, source location, and version badge
 
 ## Tech Stack
 

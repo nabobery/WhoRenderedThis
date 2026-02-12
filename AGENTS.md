@@ -35,12 +35,15 @@ pnpm check                 # Run compile + lint + format:check
 pnpm zip                   # Chrome Web Store package
 pnpm zip:firefox           # Firefox package
 
+# Testing
+pnpm test                  # Run tests in watch mode (Vitest)
+pnpm test:run              # Run tests once
+pnpm test:coverage         # Run tests with coverage report
+
 # Post-install setup
 pnpm postinstall           # WXT preparation
 pnpm prepare               # Husky git hooks setup
 ```
-
-**Note:** No test framework is currently configured. There are no commands for running tests.
 
 ## Project Structure
 
@@ -56,7 +59,21 @@ components/               # React components
 └── inspector-host.css   # Shadow host reset
 
 lib/                     # Shared utilities
-└── bridge.ts           # Message types & type guards
+├── bridge.ts           # Message types & type guards
+└── source-resolver.ts  # Version-aware source location extraction using strategy pattern:
+                        #   - detectReactEnvironment() — Probes fiber properties to detect React 16-18 vs 19+
+                        #   - debugSourceResolver — Reads fiber._debugSource (React 16-18)
+                        #   - componentStackResolver — Parses fiber._debugStack Error object (React 19+)
+                        #   - parseFirstFrameFromStack() — Chrome/Firefox stack trace parser
+                        #   - extractParentChain() — Walks fiber .return chain for ancestor components
+
+tests/                   # Test suite (Vitest)
+├── background.test.ts
+├── inspector.content.test.ts
+├── react-main-world.test.ts
+├── source-resolver.test.ts
+├── bridge.test.ts
+└── Overlay.test.tsx
 
 public/                  # Static assets
 ```

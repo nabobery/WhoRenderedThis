@@ -59,6 +59,9 @@ describe('Overlay', () => {
           lineNumber: 42,
           columnNumber: 7,
         },
+        parentChain: [],
+        reactVersionRange: 'legacy',
+        buildType: 'dev',
       },
       { top: 10, left: 20, width: 300, height: 100 },
     );
@@ -75,6 +78,9 @@ describe('Overlay', () => {
       {
         name: 'Button',
         source: null,
+        parentChain: [],
+        reactVersionRange: 'legacy',
+        buildType: 'dev',
       },
       { top: 1, left: 2, width: 10, height: 20 },
     );
@@ -95,6 +101,9 @@ describe('Overlay', () => {
       {
         name: 'Header',
         source: null,
+        parentChain: [],
+        reactVersionRange: 'legacy',
+        buildType: 'dev',
       },
       { top: 0, left: 0, width: 100, height: 50 },
     );
@@ -117,6 +126,9 @@ describe('Overlay', () => {
       {
         name: 'Footer',
         source: null,
+        parentChain: [],
+        reactVersionRange: 'legacy',
+        buildType: 'dev',
       },
       { top: 0, left: 0, width: 20, height: 10 },
     );
@@ -135,6 +147,9 @@ describe('Overlay', () => {
         {
           name: 'Card',
           source: null,
+          parentChain: [],
+          reactVersionRange: 'legacy',
+          buildType: 'dev',
         },
         { top: 0, left: 0, width: 10, height: 10 },
       );

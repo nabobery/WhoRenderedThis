@@ -120,7 +120,9 @@ export default function Overlay({ onClose }: OverlayProps) {
   // ── Copy component name ─────────────────────────────────────────────────
   const handleCopy = useCallback(async () => {
     if (!component) return;
-    const text = component.name;
+    const text = component.source
+      ? `${component.name} (${component.source.fileName}:${component.source.lineNumber})`
+      : component.name;
 
     const flashCopied = () => {
       setCopied(true);
@@ -160,12 +162,22 @@ export default function Overlay({ onClose }: OverlayProps) {
     };
   }, []);
 
+  const parentChain = component?.parentChain ?? [];
+  const versionRange = component?.reactVersionRange ?? 'unknown';
+  const buildType = component?.buildType ?? 'unknown';
+
+  const versionLabel = (() => {
+    const base =
+      versionRange === 'legacy' ? 'React 16-18' : versionRange === 'modern' ? 'React 19+' : 'React';
+    return buildType === 'production' ? `${base} (prod)` : base;
+  })();
+
   // ── Compute safe panel position (keep inside viewport) ──────────────────
   const safePanelStyle = (() => {
     const margin = 12;
     let { top, left } = panelPos;
     const panelWidth = 320;
-    const panelHeight = 80;
+    const panelHeight = pinned && parentChain.length > 0 ? 110 : 80;
 
     if (left + panelWidth > window.innerWidth - margin) {
       left = lastMouseRef.current.x - panelWidth - 16;
@@ -207,7 +219,7 @@ export default function Overlay({ onClose }: OverlayProps) {
           <>
             <div className="wrt-panel-header">
               {pinned && <span className="wrt-pinned-indicator" />}
-              <span className="wrt-badge">React</span>
+              <span className="wrt-badge">{versionLabel}</span>
               <span className="wrt-component-name">
                 {'<'}
                 {component.name}
@@ -218,6 +230,9 @@ export default function Overlay({ onClose }: OverlayProps) {
               <div className="wrt-source">
                 {component.source.fileName}:{component.source.lineNumber}
               </div>
+            )}
+            {pinned && parentChain.length > 0 && (
+              <div className="wrt-parent-chain">{parentChain.join(' > ')}</div>
             )}
             <div className="wrt-actions">
               <button
