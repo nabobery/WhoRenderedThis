@@ -60,6 +60,7 @@ graph TB
 | Main World      | `react-main-world.ts`   | Page Context   | Performs React Fiber introspection, returns component data    |
 | Source Resolver | `source-resolver.ts`    | Page Context   | Version-aware source location extraction via strategy pattern |
 | Overlay UI      | `Overlay.tsx`           | Shadow DOM     | Renders inspector panel, version badge, and highlight box     |
+| Parent Chain UI | `ParentChainList.tsx`   | Shadow DOM     | Renders parent component hierarchy with source locations      |
 
 ---
 
@@ -451,16 +452,23 @@ function describeNativeComponentFrame(fn: Function): SourceLocation | null {
 
 #### Parent Chain Extraction
 
-Walks the fiber `.return` chain to collect ancestor component names:
+Walks the fiber `.return` chain to collect ancestor component names and source locations:
 
 ```typescript
-export function extractParentChain(fiber: FiberNode, maxDepth = 5): string[] {
-  const chain: string[] = [];
+export function extractParentChain(
+  fiber: FiberNode,
+  resolver: SourceResolver,
+  maxDepth = 5,
+): ParentInfo[] {
+  const chain: ParentInfo[] = [];
   let current = fiber.return ?? null;
 
   while (current && chain.length < maxDepth) {
     if (current.type && typeof current.type !== 'string' && typeof current.type !== 'symbol') {
-      chain.push(getComponentName(current.type));
+      chain.push({
+        name: getComponentName(current.type),
+        source: resolver.resolve(current),
+      });
     }
     current = current.return ?? null;
   }
@@ -497,6 +505,12 @@ export type ReactBuildType = 'dev' | 'production' | 'unknown';
 export type ReactVersionRange = 'legacy' | 'modern' | 'unknown';
 // legacy = React 16-18 (_debugSource), modern = React 19+ (_debugStack)
 
+// Parent component info (for parent chain with sources)
+interface ParentInfo {
+  name: string;
+  source: { fileName: string; lineNumber: number; columnNumber: number } | null;
+}
+
 // Request: "What component is at coordinates (x, y)?"
 interface ProbeRequest {
   channel: 'who-rendered-this';
@@ -509,7 +523,7 @@ interface ProbeRequest {
 interface ComponentInfo {
   name: string;
   source: { fileName: string; lineNumber: number; columnNumber: number } | null;
-  parentChain: string[]; // Parent component names (nearest-first, max 5)
+  parentChain: ParentInfo[]; // Parent components with names and sources (nearest-first, max 5)
   reactVersionRange: ReactVersionRange;
   buildType: ReactBuildType;
 }
@@ -585,13 +599,21 @@ const versionLabel = (() => {
 
 #### Parent Chain Display
 
-When pinned, shows the component's ancestor hierarchy:
+When pinned, shows the component's ancestor hierarchy with source locations via the `ParentChainList` component:
 
 ```typescript
-{pinned && parentChain.length > 0 && (
-  <div className="wrt-parent-chain">{parentChain.join(' > ')}</div>
-)}
-// Example: "App > Layout > Sidebar"
+{pinned && parentChain.length > 0 && <ParentChainList parents={parentChain} />}
+// Renders as a scrollable list showing: "App (App.tsx:5)", "Layout (Layout.tsx:12)", etc.
+```
+
+The `ParentChainList` component formats each parent with its source location:
+
+```typescript
+function formatSource(source: ParentInfo['source']): string | null {
+  if (!source) return null;
+  const fileName = source.fileName.split('/').pop() ?? source.fileName;
+  return `${fileName}:${source.lineNumber}`;
+}
 ```
 
 #### Enhanced Copy Functionality
@@ -724,6 +746,8 @@ WhoRenderedThis/
 ├── components/
 │   ├── Overlay.tsx             # React overlay UI with version badge
 │   ├── Overlay.css             # Overlay styles (Shadow DOM)
+│   ├── ParentChainList.tsx     # Parent chain with source locations
+│   ├── ParentChainList.css     # Parent chain styles
 │   └── inspector-host.css      # Host element reset
 ├── lib/
 │   ├── bridge.ts               # Message types, guards, and type aliases
@@ -733,6 +757,7 @@ WhoRenderedThis/
 │   ├── bridge.test.ts          # Message bridge tests
 │   ├── inspector.content.test.ts
 │   ├── Overlay.test.tsx        # Overlay component tests
+│   ├── ParentChainList.test.tsx # Parent chain list component tests
 │   ├── react-main-world.test.ts
 │   └── source-resolver.test.ts # Stack parser, version detection, resolver tests
 ├── public/

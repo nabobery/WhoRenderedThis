@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/nabobery/WhoRenderedThis/actions/workflows/ci.yml/badge.svg)](https://github.com/nabobery/WhoRenderedThis/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](https://github.com/nabobery/WhoRenderedThis/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/nabobery/WhoRenderedThis/releases)
 
 A browser extension that maps React components to their visual positions in the rendered page. Hover over any element on a React app and instantly see which component rendered it.
 
@@ -16,7 +16,8 @@ A browser extension that maps React components to their visual positions in the 
 
 ### From Store (Recommended)
 
-- **Microsoft Edge**: Coming soon to [Edge Add-ons](https://microsoftedge.microsoft.com/addons)
+- **Microsoft Edge**: [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/whorenderedthis/gnppbipjiohpjdelkllmnbmakldfdeji)
+- **Mozilla Firefox**: [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/whorenderedthis/)
 - **Chrome Web Store**: Coming soon
 
 ### Development Build
@@ -47,9 +48,9 @@ A browser extension that maps React components to their visual positions in the 
 - **Component Name + Source** — Shows `displayName`/`name` and source file location in dev builds
 - **React 16-19 Support** — Version-aware source extraction: `_debugSource` for React 16-18, `_debugStack` parsing for React 19+
 - **Version Badge** — Displays detected React version range ("React 16-18", "React 19+") and build type
-- **Parent Component Chain** — When pinned, shows ancestor components (e.g., "App > Layout > Sidebar")
+- **Parent Component Chain** — When pinned, shows ancestor components with source locations (e.g., "App (App.tsx:5) > Layout (Layout.tsx:12)")
 - **Pin Selection** — Click to lock the current selection; click again or press Escape to unpin
-- **Copy to Clipboard** — Copy component name with source location (e.g., "Button (src/Button.tsx:42)")
+- **Copy to Clipboard** — Copy component name with source location; includes parent chain when pinned
 - **Zero Config** — Works on any page using React (dev or production builds)
 - **CSS Isolated** — Overlay UI is rendered inside a Shadow DOM so it never interferes with the page
 
@@ -89,7 +90,7 @@ pnpm test:run     # Run tests
 
 ## Compatibility
 
-- **Browsers**: Chrome, Edge, Brave, and other Chromium-based browsers
+- **Browsers**: Chrome, Edge, Firefox, Brave, and other Chromium-based browsers
 - **React Versions**: 16, 17, 18, 19
 - **Frameworks**: Create React App, Next.js, Vite, Remix, Gatsby
 
