@@ -258,30 +258,57 @@ describe('createSourceResolver', () => {
 // ── Parent chain extraction tests ──────────────────────────────────────────
 
 describe('extractParentChain', () => {
-  it('extracts parent component names', () => {
+  it('extracts parent component names and sources', () => {
     function App() {}
     function Layout() {}
     function Sidebar() {}
 
-    const grandparent: FiberNode = { type: App, return: null };
-    const parent: FiberNode = { type: Layout, return: grandparent };
+    const grandparent: FiberNode = {
+      type: App,
+      return: null,
+      _debugSource: { fileName: '/src/App.tsx', lineNumber: 5, columnNumber: 1 },
+    };
+    const parent: FiberNode = {
+      type: Layout,
+      return: grandparent,
+      _debugSource: { fileName: '/src/Layout.tsx', lineNumber: 10, columnNumber: 3 },
+    };
     const fiber: FiberNode = { type: Sidebar, return: parent };
 
-    const chain = extractParentChain(fiber);
-    expect(chain).toEqual(['Layout', 'App']);
+    const chain = extractParentChain(fiber, debugSourceResolver);
+    expect(chain).toEqual([
+      {
+        name: 'Layout',
+        source: { fileName: '/src/Layout.tsx', lineNumber: 10, columnNumber: 3 },
+      },
+      {
+        name: 'App',
+        source: { fileName: '/src/App.tsx', lineNumber: 5, columnNumber: 1 },
+      },
+    ]);
   });
 
   it('skips host elements (string types)', () => {
     function App() {}
     function Layout() {}
 
-    const grandparent: FiberNode = { type: App, return: null };
+    const grandparent: FiberNode = {
+      type: App,
+      return: null,
+      _debugSource: { fileName: '/src/App.tsx', lineNumber: 1 },
+    };
     const divFiber: FiberNode = { type: 'div', return: grandparent };
-    const parent: FiberNode = { type: Layout, return: divFiber };
+    const parent: FiberNode = {
+      type: Layout,
+      return: divFiber,
+      _debugSource: { fileName: '/src/Layout.tsx', lineNumber: 2 },
+    };
     const fiber: FiberNode = { type: function Child() {}, return: parent };
 
-    const chain = extractParentChain(fiber);
-    expect(chain).toEqual(['Layout', 'App']);
+    const chain = extractParentChain(fiber, debugSourceResolver);
+    expect(chain).toHaveLength(2);
+    expect(chain[0].name).toBe('Layout');
+    expect(chain[1].name).toBe('App');
   });
 
   it('limits to maxDepth', () => {
@@ -299,14 +326,14 @@ describe('extractParentChain', () => {
     const f2: FiberNode = { type: B, return: f3 };
     const f1: FiberNode = { type: A, return: f2 };
 
-    const chain = extractParentChain(f1, 3);
+    const chain = extractParentChain(f1, debugSourceResolver, 3);
     expect(chain).toHaveLength(3);
-    expect(chain).toEqual(['B', 'C', 'D']);
+    expect(chain.map((p) => p.name)).toEqual(['B', 'C', 'D']);
   });
 
   it('returns empty array when no parents', () => {
     const fiber: FiberNode = { type: function App() {}, return: null };
-    expect(extractParentChain(fiber)).toEqual([]);
+    expect(extractParentChain(fiber, debugSourceResolver)).toEqual([]);
   });
 
   it('uses displayName when available', () => {
@@ -316,8 +343,20 @@ describe('extractParentChain', () => {
     const parent: FiberNode = { type: MyComponent, return: null };
     const fiber: FiberNode = { type: function Child() {}, return: parent };
 
-    const chain = extractParentChain(fiber);
-    expect(chain).toEqual(['StyledButton']);
+    const chain = extractParentChain(fiber, debugSourceResolver);
+    expect(chain).toHaveLength(1);
+    expect(chain[0].name).toBe('StyledButton');
+  });
+
+  it('returns null source when _debugSource is missing', () => {
+    function App() {}
+    function Child() {}
+
+    const parent: FiberNode = { type: App, return: null };
+    const fiber: FiberNode = { type: Child, return: parent };
+
+    const chain = extractParentChain(fiber, debugSourceResolver);
+    expect(chain).toEqual([{ name: 'App', source: null }]);
   });
 });
 
@@ -346,7 +385,10 @@ describe('isProbeResponse with new ComponentInfo fields', () => {
         component: {
           name: 'App',
           source: { fileName: 'App.tsx', lineNumber: 10, columnNumber: 3 },
-          parentChain: ['Layout', 'Root'],
+          parentChain: [
+            { name: 'Layout', source: { fileName: 'Layout.tsx', lineNumber: 5, columnNumber: 1 } },
+            { name: 'Root', source: null },
+          ],
           reactVersionRange: 'legacy',
           buildType: 'dev',
         },
@@ -406,7 +448,7 @@ describe('isProbeResponse with new ComponentInfo fields', () => {
     ).toBe(false);
   });
 
-  it('rejects non-string array parentChain', () => {
+  it('rejects invalid parentChain (not ParentInfo array)', () => {
     expect(
       isProbeResponse({
         channel: CHANNEL,
@@ -414,7 +456,24 @@ describe('isProbeResponse with new ComponentInfo fields', () => {
         component: {
           name: 'App',
           source: null,
-          parentChain: [1, 2, 3],
+          parentChain: ['Layout', 'Root'], // strings instead of ParentInfo
+          reactVersionRange: 'legacy',
+          buildType: 'dev',
+        },
+        rect: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects parentChain with invalid source', () => {
+    expect(
+      isProbeResponse({
+        channel: CHANNEL,
+        type: 'probe-response',
+        component: {
+          name: 'App',
+          source: null,
+          parentChain: [{ name: 'Layout', source: { fileName: 123 } }], // invalid fileName
           reactVersionRange: 'legacy',
           buildType: 'dev',
         },

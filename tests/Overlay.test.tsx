@@ -169,4 +169,37 @@ describe('Overlay', () => {
       vi.useRealTimers();
     }
   });
+
+  it('displays parent chain with sources when pinned', async () => {
+    const user = userEvent.setup();
+    render(<Overlay onClose={vi.fn()} />);
+
+    await dispatchProbeResponse(
+      {
+        name: 'Button',
+        source: { fileName: 'src/Button.tsx', lineNumber: 10, columnNumber: 1 },
+        parentChain: [
+          {
+            name: 'Layout',
+            source: { fileName: 'src/Layout.tsx', lineNumber: 5, columnNumber: 1 },
+          },
+          { name: 'App', source: null },
+        ],
+        reactVersionRange: 'legacy',
+        buildType: 'dev',
+      },
+      { top: 0, left: 0, width: 100, height: 50 },
+    );
+
+    // Parent chain not visible before pin
+    expect(screen.queryByRole('list', { name: 'Parent components' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Pin' }));
+
+    // Parent chain visible after pin
+    expect(screen.getByRole('list', { name: 'Parent components' })).toBeInTheDocument();
+    expect(screen.getByText('Layout')).toBeInTheDocument();
+    expect(screen.getByText('Layout.tsx:5')).toBeInTheDocument();
+    expect(screen.getByText('App')).toBeInTheDocument();
+  });
 });

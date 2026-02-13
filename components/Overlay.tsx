@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ComponentInfo, ProbeResponse } from '@/lib/bridge';
 import { CHANNEL, isProbeResponse } from '@/lib/bridge';
+import ParentChainList from './ParentChainList';
 import './Overlay.css';
 
 interface OverlayProps {
@@ -120,9 +121,16 @@ export default function Overlay({ onClose }: OverlayProps) {
   // ── Copy component name ─────────────────────────────────────────────────
   const handleCopy = useCallback(async () => {
     if (!component) return;
-    const text = component.source
+    let text = component.source
       ? `${component.name} (${component.source.fileName}:${component.source.lineNumber})`
       : component.name;
+
+    if (pinned && component.parentChain.length > 0) {
+      const parentText = component.parentChain
+        .map((p) => (p.source ? `${p.name} (${p.source.fileName}:${p.source.lineNumber})` : p.name))
+        .join(' > ');
+      text += `\nParents: ${parentText}`;
+    }
 
     const flashCopied = () => {
       setCopied(true);
@@ -154,7 +162,7 @@ export default function Overlay({ onClose }: OverlayProps) {
     } catch (err) {
       console.warn('WhoRenderedThis: copy fallback failed', err);
     }
-  }, [component]);
+  }, [component, pinned]);
 
   useEffect(() => {
     return () => {
@@ -177,7 +185,8 @@ export default function Overlay({ onClose }: OverlayProps) {
     const margin = 12;
     let { top, left } = panelPos;
     const panelWidth = 320;
-    const panelHeight = pinned && parentChain.length > 0 ? 110 : 80;
+    const panelHeight =
+      pinned && parentChain.length > 0 ? 110 + Math.min(parentChain.length * 18, 80) : 80;
 
     if (left + panelWidth > window.innerWidth - margin) {
       left = lastMouseRef.current.x - panelWidth - 16;
@@ -231,9 +240,7 @@ export default function Overlay({ onClose }: OverlayProps) {
                 {component.source.fileName}:{component.source.lineNumber}
               </div>
             )}
-            {pinned && parentChain.length > 0 && (
-              <div className="wrt-parent-chain">{parentChain.join(' > ')}</div>
-            )}
+            {pinned && parentChain.length > 0 && <ParentChainList parents={parentChain} />}
             <div className="wrt-actions">
               <button
                 type="button"

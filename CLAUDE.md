@@ -53,16 +53,18 @@ Content Script (isolated world)
 
 ### Shared Code
 
-- **`lib/bridge.ts`** — Message types (`ProbeRequest`, `ProbeResponse`), type aliases (`ReactVersionRange`, `ReactBuildType`), and type guards for communication between content script and main-world script via `window.postMessage`.
+- **`lib/bridge.ts`** — Message types (`ProbeRequest`, `ProbeResponse`), type aliases (`ReactVersionRange`, `ReactBuildType`, `ParentInfo`), and type guards for communication between content script and main-world script via `window.postMessage`.
 
 - **`lib/source-resolver.ts`** — Version-aware source location extraction using strategy pattern:
   - `detectReactEnvironment()` — Probes fiber properties to detect React 16-18 vs 19+
   - `debugSourceResolver` — Reads `fiber._debugSource` (React 16-18)
   - `componentStackResolver` — Parses `fiber._debugStack` Error object (React 19+)
   - `parseFirstFrameFromStack()` — Chrome/Firefox stack trace parser
-  - `extractParentChain()` — Walks fiber `.return` chain for ancestor components
+  - `extractParentChain()` — Walks fiber `.return` chain for ancestor components, extracting names and source locations
 
-- **`components/Overlay.tsx`** — React component for the inspector UI. Shows component name, source location, version badge, parent chain (when pinned), highlight box, and pin/copy actions.
+- **`components/Overlay.tsx`** — React component for the inspector UI. Shows component name, source location, version badge, parent chain with sources (when pinned), highlight box, and pin/copy actions.
+
+- **`components/ParentChainList.tsx`** — Renders the parent component hierarchy as a scrollable list with component names and source locations (file:line). Gracefully handles missing sources in production builds.
 
 ### Key Implementation Details
 

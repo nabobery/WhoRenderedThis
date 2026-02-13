@@ -4,7 +4,7 @@
  * Extracted into a standalone module so every function can be
  * directly unit-tested (unlike code inside a defineUnlistedScript closure).
  */
-import type { ReactBuildType, ReactVersionRange } from '@/lib/bridge';
+import type { ParentInfo, ReactBuildType, ReactVersionRange } from '@/lib/bridge';
 
 // ── Public interfaces ──────────────────────────────────────────────────────
 
@@ -306,13 +306,20 @@ function getComponentName(type: unknown): string {
   return 'Anonymous';
 }
 
-export function extractParentChain(fiber: FiberNode, maxDepth = 5): string[] {
-  const chain: string[] = [];
+export function extractParentChain(
+  fiber: FiberNode,
+  resolver: SourceResolver,
+  maxDepth = 5,
+): ParentInfo[] {
+  const chain: ParentInfo[] = [];
   let current = fiber.return ?? null;
 
   while (current && chain.length < maxDepth) {
     if (current.type && typeof current.type !== 'string' && typeof current.type !== 'symbol') {
-      chain.push(getComponentName(current.type));
+      chain.push({
+        name: getComponentName(current.type),
+        source: resolver.resolve(current),
+      });
     }
     current = current.return ?? null;
   }

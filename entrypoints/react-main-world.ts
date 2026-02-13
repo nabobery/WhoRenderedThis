@@ -123,7 +123,7 @@ export default defineUnlistedScript(() => {
     const env = detectReactEnvironment(fiber);
     const resolver = getSourceResolver(fiber);
     const source = resolver.resolve(fiber);
-    const parentChain = extractParentChain(fiber);
+    const parentChain = extractParentChain(fiber, resolver);
     return {
       name,
       source,

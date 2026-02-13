@@ -11,6 +11,12 @@ export type ReactBuildType = 'dev' | 'production' | 'unknown';
 // legacy = React 16-18 (_debugSource), modern = React 19+ (_debugStack)
 export type ReactVersionRange = 'legacy' | 'modern' | 'unknown';
 
+// ── Parent component info (for parent chain with sources) ───────────────────
+export interface ParentInfo {
+  name: string;
+  source: { fileName: string; lineNumber: number; columnNumber: number } | null;
+}
+
 // ── Request: content script → main world ────────────────────────────────────
 export interface ProbeRequest {
   channel: typeof CHANNEL;
@@ -23,7 +29,7 @@ export interface ProbeRequest {
 export interface ComponentInfo {
   name: string;
   source: { fileName: string; lineNumber: number; columnNumber: number } | null;
-  parentChain: string[];
+  parentChain: ParentInfo[];
   reactVersionRange: ReactVersionRange;
   buildType: ReactBuildType;
 }
@@ -47,8 +53,24 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+function isParentInfo(value: unknown): value is ParentInfo {
+  if (!isRecord(value)) return false;
+  if (typeof value.name !== 'string') return false;
+  const source = value.source;
+  if (source !== null) {
+    if (!isRecord(source)) return false;
+    if (
+      typeof source.fileName !== 'string' ||
+      !isFiniteNumber(source.lineNumber) ||
+      !isFiniteNumber(source.columnNumber)
+    )
+      return false;
+  }
+  return true;
+}
+
+function isParentInfoArray(value: unknown): value is ParentInfo[] {
+  return Array.isArray(value) && value.every(isParentInfo);
 }
 
 function isComponentInfo(value: unknown): value is ComponentInfo {
@@ -67,7 +89,7 @@ function isComponentInfo(value: unknown): value is ComponentInfo {
   }
 
   // Validate new fields when present (backward-compatible)
-  if ('parentChain' in value && !isStringArray(value.parentChain)) return false;
+  if ('parentChain' in value && !isParentInfoArray(value.parentChain)) return false;
   if ('reactVersionRange' in value) {
     const v = value.reactVersionRange;
     if (v !== 'legacy' && v !== 'modern' && v !== 'unknown') return false;

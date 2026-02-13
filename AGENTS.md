@@ -54,18 +54,20 @@ entrypoints/               # Extension entry points
 └── react-main-world.ts   # Main-world script (Fiber access)
 
 components/               # React components
-├── Overlay.tsx          # Inspector UI overlay
+├── Overlay.tsx          # Inspector UI overlay (shows component name, source location, version badge, parent chain with sources when pinned)
 ├── Overlay.css          # Overlay styles (Shadow DOM)
+├── ParentChainList.tsx  # Renders parent component hierarchy with names and source locations
+├── ParentChainList.css  # Parent chain list styles
 └── inspector-host.css   # Shadow host reset
 
 lib/                     # Shared utilities
-├── bridge.ts           # Message types & type guards
+├── bridge.ts           # Message types (`ComponentInfo`, `ProbeRequest`, `ProbeResponse`), type aliases (`ReactVersionRange`, `ReactBuildType`, `ParentInfo`), and type guards
 └── source-resolver.ts  # Version-aware source location extraction using strategy pattern:
                         #   - detectReactEnvironment() — Probes fiber properties to detect React 16-18 vs 19+
                         #   - debugSourceResolver — Reads fiber._debugSource (React 16-18)
                         #   - componentStackResolver — Parses fiber._debugStack Error object (React 19+)
                         #   - parseFirstFrameFromStack() — Chrome/Firefox stack trace parser
-                        #   - extractParentChain() — Walks fiber .return chain for ancestor components
+                        #   - extractParentChain() — Walks fiber .return chain for ancestor components, extracting names and source locations
 
 tests/                   # Test suite (Vitest)
 ├── background.test.ts
@@ -73,7 +75,8 @@ tests/                   # Test suite (Vitest)
 ├── react-main-world.test.ts
 ├── source-resolver.test.ts
 ├── bridge.test.ts
-└── Overlay.test.tsx
+├── Overlay.test.tsx
+└── ParentChainList.test.tsx
 
 public/                  # Static assets
 ```
