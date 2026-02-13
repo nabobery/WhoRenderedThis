@@ -50,6 +50,13 @@ jobs:
       - name: Create Firefox ZIP
         run: pnpm zip:firefox
 
+      - name: Upload artifacts for store submission
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zips
+          path: .output/*.zip
+          retention-days: 7
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -60,3 +67,54 @@ jobs:
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  submit-to-stores:
+    needs: release
+    runs-on: ubuntu-latest
+    # Skip pre-releases (alpha/beta/rc)
+    if: ${{ !contains(github.ref, '-alpha') && !contains(github.ref, '-beta') && !contains(github.ref, '-rc') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-zips
+          path: .output/
+
+      - name: Submit to stores
+        run: |
+          pnpm wxt submit \
+            --firefox-zip .output/*-firefox.zip \
+            --firefox-sources-zip .output/*-sources.zip \
+            --edge-zip .output/*-chrome.zip
+        env:
+          # Firefox Add-ons
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+          # Microsoft Edge Add-ons
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+          # Chrome Web Store (uncomment when listing is created)
+          # CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          # CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          # CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          # CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}

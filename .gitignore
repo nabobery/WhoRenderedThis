@@ -28,3 +28,6 @@ web-ext.config.ts
 # AI files
 .claude
 .cursor
+
+# WXT submit credentials (never commit!)
+.env.submit
