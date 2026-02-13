@@ -38,17 +38,17 @@ jobs:
       - name: Run tests
         run: pnpm test:run
 
-      - name: Build Chrome
-        run: pnpm build
-
       - name: Create Chrome ZIP
         run: pnpm zip
 
-      - name: Build Firefox
-        run: pnpm build:firefox
+      - name: Save Chrome ZIP
+        run: mv .output/*.zip /tmp/
 
       - name: Create Firefox ZIP
         run: pnpm zip:firefox
+
+      - name: Collect all ZIPs
+        run: mv /tmp/*.zip .output/
 
       - name: Upload artifacts for store submission
         uses: actions/upload-artifact@v4

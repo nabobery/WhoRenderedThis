@@ -35,17 +35,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Chrome
-        run: pnpm build
-
       - name: Create Chrome ZIP
         run: pnpm zip
 
-      - name: Build Firefox
-        run: pnpm build:firefox
+      - name: Save Chrome ZIP
+        run: mv .output/*.zip /tmp/
 
       - name: Create Firefox ZIP
         run: pnpm zip:firefox
+
+      - name: Collect all ZIPs
+        run: mv /tmp/*.zip .output/
 
       - name: Dry run - Firefox
         if: ${{ inputs.stores == 'all' || inputs.stores == 'firefox' }}
