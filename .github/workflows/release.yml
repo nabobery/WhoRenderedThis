@@ -48,20 +48,25 @@ jobs:
         run: pnpm zip:firefox
 
       - name: Collect all ZIPs
-        run: mv /tmp/*.zip .output/
+        run: |
+          mkdir -p artifacts
+          mv /tmp/*.zip artifacts/
+          mv .output/*.zip artifacts/
+          echo "Collected artifacts:"
+          ls -la artifacts/
 
       - name: Upload artifacts for store submission
         uses: actions/upload-artifact@v4
         with:
           name: extension-zips
-          path: .output/*.zip
+          path: artifacts/
           retention-days: 7
+          if-no-files-found: error
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            .output/*.zip
+          files: artifacts/*.zip
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
@@ -97,6 +102,11 @@ jobs:
         with:
           name: extension-zips
           path: .output/
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          ls -la .output/
 
       - name: Submit to stores
         run: |
