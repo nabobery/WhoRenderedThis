@@ -18,7 +18,7 @@ A browser extension that maps React components to their visual positions in the 
 
 - **Microsoft Edge**: [Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/whorenderedthis/gnppbipjiohpjdelkllmnbmakldfdeji)
 - **Mozilla Firefox**: [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/whorenderedthis/)
-- **Chrome Web Store**: Coming soon
+- **Chrome Web Store**: Not published yet (see [Testing + Publishing Guide](docs/testing-and-publishing.md))
 
 ### Development Build
 
@@ -86,6 +86,7 @@ pnpm test:run     # Run tests
 ## Documentation
 
 - [Architecture Overview](docs/architecture.md)
+- [Testing + Publishing Guide](docs/testing-and-publishing.md)
 - [Contributing Guide](CONTRIBUTING.md)
 
 ## Compatibility
@@ -103,7 +104,7 @@ This extension:
 - Operates entirely locally in your browser
 - Only activates when you click the extension icon
 
-See [SECURITY.md](SECURITY.md) for more details.
+See [docs/privacy-policy.md](docs/privacy-policy.md) and [SECURITY.md](SECURITY.md) for more details.
 
 ## Contributing
 

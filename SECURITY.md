@@ -40,6 +40,6 @@ We will respond within 48 hours and work with you to understand and address the 
 
 When using this extension:
 
-- Only install from official sources (Edge Add-ons, Chrome Web Store)
+- Only install from official sources (Edge Add-ons, Firefox Add-ons; Chrome Web Store once available)
 - Keep the extension updated to the latest version
 - Review the source code if you have concerns (it's open source!)

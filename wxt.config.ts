@@ -39,7 +39,8 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: ['react-main-world.js'],
-        matches: ['<all_urls>'],
+        // Limit to web pages we can realistically support (also reduces review friction).
+        matches: ['http://*/*', 'https://*/*'],
       },
     ],
   },

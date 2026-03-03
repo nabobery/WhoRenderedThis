@@ -9,7 +9,7 @@ This guide explains how to obtain and configure credentials for automated store 
 1. [Overview](#overview)
 2. [Firefox Add-ons (AMO)](#firefox-add-ons-amo)
 3. [Microsoft Edge Add-ons](#microsoft-edge-add-ons)
-4. [Chrome Web Store](#chrome-web-store-future)
+4. [Chrome Web Store](#chrome-web-store)
 5. [GitHub Secrets Setup](#github-secrets-setup)
 6. [Local Testing](#local-testing)
 7. [Edge API Key Rotation](#edge-api-key-rotation)
@@ -22,11 +22,11 @@ The extension uses [WXT Submit](https://wxt.dev/guide/essentials/publishing) to 
 
 **Current store status:**
 
-| Store            | Status        | Automated |
-| ---------------- | ------------- | --------- |
-| Firefox Add-ons  | ✅ Published  | ✅ Yes    |
-| Edge Add-ons     | ✅ Published  | ✅ Yes    |
-| Chrome Web Store | ❌ Not listed | ❌ No     |
+| Store            | Status        | Automated  |
+| ---------------- | ------------- | ---------- |
+| Firefox Add-ons  | ✅ Published  | ✅ Yes     |
+| Edge Add-ons     | ✅ Published  | ✅ Yes     |
+| Chrome Web Store | ❌ Not listed | ⏳ Pending |
 
 ---
 
@@ -93,15 +93,22 @@ EDGE_API_KEY=your-api-key
 
 ---
 
-## Chrome Web Store (Future)
+## Chrome Web Store
 
-> Chrome Web Store automation is not yet configured because the extension is not listed there. Follow these steps when creating the Chrome listing.
+> You must create the initial Chrome Web Store (CWS) item manually in the Developer Dashboard before CI automation can upload updates.
+
+### Important: Chrome Web Store API Deprecation
+
+The legacy Chrome Web Store API is deprecated and is scheduled to stop working on **2026-10-15**. Plan to migrate automation well before that date.
+
+At time of writing, the newer CWS API does **not** support changing an item's visibility via API (you may need to publish/rollout manually in the dashboard).
 
 ### Prerequisites
 
 1. Register at [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) ($5 one-time fee)
-2. Create the extension listing manually first
-3. Note the Extension ID from the URL
+2. Create the extension listing manually first (upload a zip once, even if you don't publish yet)
+3. Note the **Extension ID** from the item URL (32-char id)
+4. Ensure your publisher account has **2-step verification** enabled (required for API access)
 
 ### Getting OAuth Credentials
 
@@ -157,7 +164,7 @@ EDGE_API_KEY=your-api-key
 
 10. Copy the **Refresh Token**
 
-### Required Secrets (Future)
+### Required Secrets
 
 ```
 CHROME_EXTENSION_ID=your-extension-id
@@ -180,18 +187,18 @@ CHROME_REFRESH_TOKEN=your-refresh-token
 
 ### Required Secrets Checklist
 
-| Secret                 | Store   | Required   |
-| ---------------------- | ------- | ---------- |
-| `FIREFOX_EXTENSION_ID` | Firefox | ✅ Yes     |
-| `FIREFOX_JWT_ISSUER`   | Firefox | ✅ Yes     |
-| `FIREFOX_JWT_SECRET`   | Firefox | ✅ Yes     |
-| `EDGE_PRODUCT_ID`      | Edge    | ✅ Yes     |
-| `EDGE_CLIENT_ID`       | Edge    | ✅ Yes     |
-| `EDGE_API_KEY`         | Edge    | ✅ Yes     |
-| `CHROME_EXTENSION_ID`  | Chrome  | ❌ Not yet |
-| `CHROME_CLIENT_ID`     | Chrome  | ❌ Not yet |
-| `CHROME_CLIENT_SECRET` | Chrome  | ❌ Not yet |
-| `CHROME_REFRESH_TOKEN` | Chrome  | ❌ Not yet |
+| Secret                 | Store   | Required                 |
+| ---------------------- | ------- | ------------------------ |
+| `FIREFOX_EXTENSION_ID` | Firefox | ✅ Yes                   |
+| `FIREFOX_JWT_ISSUER`   | Firefox | ✅ Yes                   |
+| `FIREFOX_JWT_SECRET`   | Firefox | ✅ Yes                   |
+| `EDGE_PRODUCT_ID`      | Edge    | ✅ Yes                   |
+| `EDGE_CLIENT_ID`       | Edge    | ✅ Yes                   |
+| `EDGE_API_KEY`         | Edge    | ✅ Yes                   |
+| `CHROME_EXTENSION_ID`  | Chrome  | ⏳ After CWS item exists |
+| `CHROME_CLIENT_ID`     | Chrome  | ⏳ After CWS item exists |
+| `CHROME_CLIENT_SECRET` | Chrome  | ⏳ After CWS item exists |
+| `CHROME_REFRESH_TOKEN` | Chrome  | ⏳ After CWS item exists |
 
 ---
 
@@ -224,6 +231,11 @@ pnpm wxt submit --dry-run \
 # Test Edge submission (dry run)
 pnpm wxt submit --dry-run \
   --edge-zip .output/*-chrome.zip
+
+# Test Chrome submission (dry run)
+# (Requires CHROME_* vars to be set, and a CWS item already created)
+pnpm wxt submit --dry-run \
+  --chrome-zip .output/*-chrome.zip
 ```
 
 ### CI Dry Run
