@@ -12,15 +12,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -46,8 +46,15 @@ jobs:
       - name: Create ZIP
         run: pnpm zip
 
+      - name: Validate Chrome ZIP contents
+        run: |
+          ZIP="$(ls -1 .output/*-chrome.zip | head -n 1)"
+          echo "Validating zip: $ZIP"
+          unzip -l "$ZIP" | grep -q "manifest.json"
+          unzip -l "$ZIP" | grep -q "icon/128.png"
+
       - name: Upload Chrome extension artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chrome-extension
           path: .output/*.zip
