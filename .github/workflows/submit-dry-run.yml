@@ -17,6 +17,11 @@ on:
 jobs:
   dry-run:
     runs-on: ubuntu-latest
+    env:
+      CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+      CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
 
     steps:
       - name: Checkout code
@@ -24,13 +29,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: package.json
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -71,12 +74,14 @@ jobs:
 
       - name: Dry run - Chrome
         # Only works after the CWS item exists and secrets are configured.
-        if: ${{ (inputs.stores == 'all' || inputs.stores == 'chrome') && secrets.CHROME_EXTENSION_ID != '' }}
+        if: >-
+          ${{
+            (inputs.stores == 'all' || inputs.stores == 'chrome') &&
+            env.CHROME_EXTENSION_ID != '' &&
+            env.CHROME_CLIENT_ID != '' &&
+            env.CHROME_CLIENT_SECRET != '' &&
+            env.CHROME_REFRESH_TOKEN != ''
+          }}
         run: |
           pnpm wxt submit --dry-run \
             --chrome-zip .output/*-chrome.zip
-        env:
-          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
