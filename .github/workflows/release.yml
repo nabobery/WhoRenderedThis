@@ -13,17 +13,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: package.json
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -56,7 +56,7 @@ jobs:
           ls -la artifacts/
 
       - name: Upload artifacts for store submission
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: extension-zips
           path: artifacts/
@@ -64,7 +64,7 @@ jobs:
           if-no-files-found: error
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: artifacts/*.zip
           generate_release_notes: true
@@ -78,27 +78,32 @@ jobs:
     runs-on: ubuntu-latest
     # Skip pre-releases (alpha/beta/rc)
     if: ${{ !contains(github.ref, '-alpha') && !contains(github.ref, '-beta') && !contains(github.ref, '-rc') }}
+    env:
+      CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+      CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+      CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+      CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: package.json
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: extension-zips
           path: .output/
@@ -123,8 +128,18 @@ jobs:
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
           EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
-          # Chrome Web Store (uncomment when listing is created)
-          # CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          # CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          # CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          # CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          # Chrome Web Store (handled in a separate step below)
+
+      - name: Upload to Chrome Web Store (draft)
+        # Only run once the CWS item exists and CHROME_* secrets are configured.
+        if: >-
+          ${{
+            env.CHROME_EXTENSION_ID != '' &&
+            env.CHROME_CLIENT_ID != '' &&
+            env.CHROME_CLIENT_SECRET != '' &&
+            env.CHROME_REFRESH_TOKEN != ''
+          }}
+        run: |
+          pnpm wxt submit \
+            --chrome-zip .output/*-chrome.zip \
+            --chrome-skip-submit-review

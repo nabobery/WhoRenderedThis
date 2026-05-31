@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/nabobery/WhoRenderedThis/actions/workflows/ci.yml/badge.svg)](https://github.com/nabobery/WhoRenderedThis/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://github.com/nabobery/WhoRenderedThis/releases)
+[![Version](https://img.shields.io/badge/version-0.2.1-green.svg)](https://github.com/nabobery/WhoRenderedThis/releases)
 
 A browser extension that maps React components to their visual positions in the rendered page. Hover over any element on a React app and instantly see which component rendered it.
 
